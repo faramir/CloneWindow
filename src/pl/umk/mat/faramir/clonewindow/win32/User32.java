@@ -28,4 +28,6 @@ public interface User32 extends com.sun.jna.platform.win32.User32 {
     boolean ScreenToClient(HWND hWnd, POINT point);
 
     boolean DrawIcon(HDC hDC, int X, int Y, HICON hIcon);
+
+    HWND WindowFromPoint(POINT.ByValue point);
 }

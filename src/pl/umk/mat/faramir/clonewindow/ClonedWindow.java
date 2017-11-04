@@ -8,8 +8,10 @@
 package pl.umk.mat.faramir.clonewindow;
 
 import com.sun.jna.Native;
+import com.sun.jna.platform.win32.WinDef;
 import com.sun.jna.platform.win32.WinDef.HDC;
 import com.sun.jna.platform.win32.WinDef.HWND;
+import com.sun.jna.platform.win32.WinDef.POINT;
 import com.sun.jna.platform.win32.WinDef.RECT;
 import com.sun.jna.platform.win32.WinGDI.ICONINFO;
 import java.awt.Dimension;
@@ -123,15 +125,18 @@ final public class ClonedWindow extends JFrame {
             User32.INSTANCE.GetCursorInfo(cursorInfo);
 
             if ((cursorInfo.flags & Constants.CURSOR_SHOWING) != 0) {
-                ICONINFO iconInfo = new ICONINFO();
-                User32.INSTANCE.GetIconInfo(cursorInfo.hCursor, iconInfo);
+                HWND mouseWindow = User32.INSTANCE.WindowFromPoint(
+                        new POINT.ByValue(cursorInfo.ptScreenPos.getPointer()));
+                if (sourceHandle.equals(mouseWindow)) {
+                    ICONINFO iconInfo = new ICONINFO();
+                    User32.INSTANCE.GetIconInfo(cursorInfo.hCursor, iconInfo);
 
-                User32.INSTANCE.DrawIcon(
-                        outputHDC,
-                        cursorInfo.ptScreenPos.x - rect.left - iconInfo.xHotspot,
-                        cursorInfo.ptScreenPos.y - rect.top - iconInfo.yHotspot,
-                        cursorInfo.hCursor);
-
+                    User32.INSTANCE.DrawIcon(
+                            outputHDC,
+                            cursorInfo.ptScreenPos.x - rect.left - iconInfo.xHotspot,
+                            cursorInfo.ptScreenPos.y - rect.top - iconInfo.yHotspot,
+                            cursorInfo.hCursor);
+                }
             }
         } finally {
             User32.INSTANCE.ReleaseDC(outputHandle, outputHDC);

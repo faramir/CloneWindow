@@ -77,7 +77,6 @@ public class Main extends javax.swing.JFrame {
         refreshTimeSlider.setPaintLabels(true);
         refreshTimeSlider.setPaintTicks(true);
         refreshTimeSlider.setSnapToTicks(true);
-        refreshTimeSlider.setValue(100);
         refreshTimeSlider.setNextFocusableComponent(cloneWindowButton);
         refreshTimeSlider.addChangeListener(new javax.swing.event.ChangeListener() {
             public void stateChanged(javax.swing.event.ChangeEvent evt) {

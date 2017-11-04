@@ -7,6 +7,10 @@
  */
 package pl.umk.mat.faramir.clonewindow.win32;
 
+import com.sun.jna.Structure;
+import java.util.Arrays;
+import java.util.List;
+
 /**
  *
  * @author faramir
@@ -32,5 +36,18 @@ public interface Constants extends com.sun.jna.platform.win32.WinUser {
     final int BLACKNESS = 0x00000042;
     final int WHITENESS = 0x00FF0062;
     final int CAPTUREBLT = 0x40000000;
+    final int CURSOR_SHOWING = 0x00000001;
 
+    public static class CURSORINFO extends Structure {
+
+        public int cbSize;
+        public int flags;
+        public HCURSOR hCursor;
+        public POINT ptScreenPos;
+
+        @Override
+        protected List<String> getFieldOrder() {
+            return Arrays.asList(new String[]{"cbSize", "flags", "hCursor", "ptScreenPos"});
+        }
+    }
 }

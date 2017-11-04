@@ -20,18 +20,6 @@ public interface GDI32 extends com.sun.jna.platform.win32.GDI32 {
     GDI32 INSTANCE = (GDI32) Native.loadLibrary("gdi32", GDI32.class, W32APIOptions.DEFAULT_OPTIONS);
 
     boolean BitBlt(HDC hdcDest, int nXDest, int nYDest, int nWidth, int nHeight, HDC hdcSrc, int nXSrc, int nYSrc, int dwRop);
-    
-    boolean StretchBlt(
-   HDC   hdcDest,
-   int   nXOriginDest,
-   int   nYOriginDest,
-   int   nWidthDest,
-   int   nHeightDest,
-   HDC   hdcSrc,
-   int   nXOriginSrc,
-   int   nYOriginSrc,
-   int   nWidthSrc,
-   int   nHeightSrc,
-   int dwRop
-);
+
+    boolean StretchBlt(HDC hdcDest, int nXOriginDest, int nYOriginDest, int nWidthDest, int nHeightDest, HDC hdcSrc, int nXOriginSrc, int nYOriginSrc, int nWidthSrc, int nHeightSrc, int dwRop);
 }

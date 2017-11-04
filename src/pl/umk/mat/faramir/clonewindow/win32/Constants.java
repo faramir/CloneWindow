@@ -31,6 +31,7 @@ public interface Constants extends com.sun.jna.platform.win32.WinUser {
     final int WS_SIZEBOX = 0x00040000;
 
     final int PW_CLIENTONLY = 0x00000001;
+    final int PW_RENDERFULLCONTENT = 0x00000002;
 
     final int SRCCOPY = 0x00CC0020;
     final int SRCPAINT = 0x00EE0086;

@@ -8,6 +8,7 @@
 package pl.umk.mat.faramir.clonewindow;
 
 import com.sun.jna.Native;
+import com.sun.jna.platform.win32.WinDef;
 import com.sun.jna.platform.win32.WinDef.HDC;
 import com.sun.jna.platform.win32.WinDef.HWND;
 import com.sun.jna.platform.win32.WinDef.RECT;
@@ -106,18 +107,11 @@ final public class ClonedWindow extends JFrame {
         this.setTitle(caption + " [cloned]");
 
         HDC outputHDC = User32.INSTANCE.GetWindowDC(outputHandle);
-        User32.INSTANCE.PrintWindow(sourceHandle, outputHDC, 0);
-
-//        HDC sourceHDC = User32.INSTANCE.GetDC(sourceHandle);
-//        WINDOWINFO wi = new WinUser.WINDOWINFO();
-//        User32.INSTANCE.GetWindowInfo(sourceHandle, wi);
-//
-//        GDI32.INSTANCE.BitBlt(outputHDC, 0, 0, sourceSize.width, sourceSize.height,
-//                sourceHDC, 0, 0, Constants.SRCCOPY);
-//
-//        User32.INSTANCE.ReleaseDC(sourceHandle, sourceHDC);
-
-        User32.INSTANCE.ReleaseDC(outputHandle, outputHDC);
+        try {
+            User32.INSTANCE.PrintWindow(sourceHandle, outputHDC, Constants.PW_RENDERFULLCONTENT);
+        } finally {
+            User32.INSTANCE.ReleaseDC(outputHandle, outputHDC);
+        }
     }
 
     void cloneWindow() {

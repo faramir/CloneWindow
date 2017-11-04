@@ -12,7 +12,6 @@ import pl.umk.mat.faramir.clonewindow.win32.Constants;
 import com.sun.jna.Native;
 import com.sun.jna.Pointer;
 import com.sun.jna.platform.win32.WinDef.HWND;
-import java.util.Arrays;
 import javax.swing.ImageIcon;
 import javax.swing.event.ChangeEvent;
 
@@ -77,6 +76,7 @@ public class Main extends javax.swing.JFrame {
         refreshTimeSlider.setMinorTickSpacing(10);
         refreshTimeSlider.setPaintLabels(true);
         refreshTimeSlider.setPaintTicks(true);
+        refreshTimeSlider.setSnapToTicks(true);
         refreshTimeSlider.setValue(100);
         refreshTimeSlider.setNextFocusableComponent(cloneWindowButton);
         refreshTimeSlider.addChangeListener(new javax.swing.event.ChangeListener() {
@@ -210,7 +210,7 @@ public class Main extends javax.swing.JFrame {
     private javax.swing.JLabel refreshTimeLabel;
     private javax.swing.JSlider refreshTimeSlider;
     private javax.swing.JLabel refreshTimeValueLabel;
-    private javax.swing.JComboBox<WindowHandleItem> windowCaptionComboBox;
+    private javax.swing.JComboBox<pl.umk.mat.faramir.clonewindow.WindowHandleItem> windowCaptionComboBox;
     private javax.swing.JLabel windowCaptionLabel;
     // End of variables declaration//GEN-END:variables
 }

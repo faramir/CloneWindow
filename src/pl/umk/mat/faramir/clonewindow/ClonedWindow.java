@@ -14,8 +14,6 @@ import com.sun.jna.platform.win32.WinDef.RECT;
 import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Point;
-import java.awt.event.ComponentAdapter;
-import java.awt.event.ComponentEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionAdapter;
@@ -57,7 +55,6 @@ final public class ClonedWindow extends JFrame {
             public void mouseReleased(MouseEvent evt) {
                 initialPoint = null;
             }
-
         });
 
         addMouseMotionListener(new MouseMotionAdapter() {
@@ -94,10 +91,6 @@ final public class ClonedWindow extends JFrame {
             dispose();
             return;
         }
-
-//        int titleBarHeight = (User32.INSTANCE.GetSystemMetrics(Constants.SM_CYFRAME)
-//                + User32.INSTANCE.GetSystemMetrics(Constants.SM_CYCAPTION)
-//                + User32.INSTANCE.GetSystemMetrics(Constants.SM_CXPADDEDBORDER));
 
         /* calculate dimension and if necessary change output window size */
         Dimension sourceSize = new Dimension(rect.right - rect.left, rect.bottom - rect.top);
@@ -140,6 +133,5 @@ final public class ClonedWindow extends JFrame {
         /* disable output window maximize button on titlebar */
         int outputWindowStyle = User32.INSTANCE.GetWindowLong(outputHandle, Constants.GWL_STYLE);
         User32.INSTANCE.SetWindowLong(outputHandle, Constants.GWL_STYLE, outputWindowStyle & ~Constants.WS_MAXIMIZEBOX);
-
     }
 }

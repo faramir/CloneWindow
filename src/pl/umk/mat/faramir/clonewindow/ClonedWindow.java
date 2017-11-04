@@ -8,15 +8,14 @@
 package pl.umk.mat.faramir.clonewindow;
 
 import com.sun.jna.Native;
-import com.sun.jna.platform.win32.WinDef;
 import com.sun.jna.platform.win32.WinDef.HDC;
 import com.sun.jna.platform.win32.WinDef.HWND;
 import com.sun.jna.platform.win32.WinDef.RECT;
-import com.sun.jna.platform.win32.WinUser;
-import com.sun.jna.platform.win32.WinUser.WINDOWINFO;
 import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Point;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionAdapter;
@@ -26,7 +25,6 @@ import javax.swing.ImageIcon;
 import javax.swing.JFrame;
 import javax.swing.Timer;
 import pl.umk.mat.faramir.clonewindow.win32.Constants;
-import pl.umk.mat.faramir.clonewindow.win32.GDI32;
 import pl.umk.mat.faramir.clonewindow.win32.User32;
 
 /**
@@ -48,6 +46,7 @@ final public class ClonedWindow extends JFrame {
         setIconImage(new ImageIcon(getClass().getResource("/icon.png")).getImage());
         setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
 
+        /* for drag&drop of entire window */
         addMouseListener(new MouseAdapter() {
             @Override
             public void mousePressed(MouseEvent evt) {
@@ -88,6 +87,7 @@ final public class ClonedWindow extends JFrame {
 
     @Override
     public void paint(Graphics g) {
+        /* get source window size */
         RECT rect = new RECT();
         User32.INSTANCE.GetWindowRect(sourceHandle, rect);
         if (rect.right - rect.left == 0) {
@@ -95,19 +95,31 @@ final public class ClonedWindow extends JFrame {
             return;
         }
 
+//        int titleBarHeight = (User32.INSTANCE.GetSystemMetrics(Constants.SM_CYFRAME)
+//                + User32.INSTANCE.GetSystemMetrics(Constants.SM_CYCAPTION)
+//                + User32.INSTANCE.GetSystemMetrics(Constants.SM_CXPADDEDBORDER));
+
+        /* calculate dimension and if necessary change output window size */
         Dimension sourceSize = new Dimension(rect.right - rect.left, rect.bottom - rect.top);
-        Dimension cloneSize = this.getSize();
-        if (!cloneSize.equals(sourceSize)) {
-            this.setSize(sourceSize);
+        if (!getSize().equals(sourceSize)) {
+            setPreferredSize(sourceSize);
+            setMinimumSize(sourceSize);
+            setMaximumSize(sourceSize);
+            setSize(sourceSize);
+            revalidate();
         }
 
+
+        /* get title of source window */
         char[] captionArray = new char[User32.INSTANCE.GetWindowTextLength(sourceHandle) + 1];
         int captionLength = User32.INSTANCE.GetWindowText(sourceHandle, captionArray, captionArray.length);
         String caption = new String(captionArray, 0, captionLength);
-        this.setTitle(caption + " [cloned]");
+        setTitle(caption + " [cloned]");
 
+        /* get full window (not only "client"; with titlebar) DC - for painting */
         HDC outputHDC = User32.INSTANCE.GetWindowDC(outputHandle);
         try {
+            /* copy from source window to output DC with GPU rendered*/
             User32.INSTANCE.PrintWindow(sourceHandle, outputHDC, Constants.PW_RENDERFULLCONTENT);
         } finally {
             User32.INSTANCE.ReleaseDC(outputHandle, outputHDC);
@@ -118,8 +130,16 @@ final public class ClonedWindow extends JFrame {
         refreshTimer.start();
         setVisible(true);
 
+        /* get handle of this window */
         outputHandle = new HWND(Native.getWindowPointer(this));
-        int windowStyle = User32.INSTANCE.GetWindowLong(sourceHandle, Constants.GWL_STYLE);
-        setResizable((windowStyle & Constants.WS_SIZEBOX) != 0);
+
+        /* check source style (is resizeable) and set it for output window */
+        int sourceWindowStyle = User32.INSTANCE.GetWindowLong(sourceHandle, Constants.GWL_STYLE);
+        setResizable((sourceWindowStyle & Constants.WS_SIZEBOX) != 0);
+
+        /* disable output window maximize button on titlebar */
+        int outputWindowStyle = User32.INSTANCE.GetWindowLong(outputHandle, Constants.GWL_STYLE);
+        User32.INSTANCE.SetWindowLong(outputHandle, Constants.GWL_STYLE, outputWindowStyle & ~Constants.WS_MAXIMIZEBOX);
+
     }
 }

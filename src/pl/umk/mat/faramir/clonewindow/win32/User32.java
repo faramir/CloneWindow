@@ -9,7 +9,7 @@ package pl.umk.mat.faramir.clonewindow.win32;
 
 import com.sun.jna.Native;
 import com.sun.jna.win32.W32APIOptions;
-import pl.umk.mat.faramir.clonewindow.win32.Constants.CURSORINFO;
+import pl.umk.mat.faramir.clonewindow.win32.Structures.CURSORINFO;
 
 /**
  *

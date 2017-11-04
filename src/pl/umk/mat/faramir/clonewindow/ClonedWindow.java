@@ -7,12 +7,12 @@
  */
 package pl.umk.mat.faramir.clonewindow;
 
-import pl.umk.mat.faramir.clonewindow.win32.User32;
-import pl.umk.mat.faramir.clonewindow.win32.Constants;
 import com.sun.jna.Native;
 import com.sun.jna.platform.win32.WinDef.HDC;
 import com.sun.jna.platform.win32.WinDef.HWND;
 import com.sun.jna.platform.win32.WinDef.RECT;
+import com.sun.jna.platform.win32.WinUser;
+import com.sun.jna.platform.win32.WinUser.WINDOWINFO;
 import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Point;
@@ -24,6 +24,9 @@ import java.awt.event.WindowEvent;
 import javax.swing.ImageIcon;
 import javax.swing.JFrame;
 import javax.swing.Timer;
+import pl.umk.mat.faramir.clonewindow.win32.Constants;
+import pl.umk.mat.faramir.clonewindow.win32.GDI32;
+import pl.umk.mat.faramir.clonewindow.win32.User32;
 
 /**
  *
@@ -97,13 +100,23 @@ final public class ClonedWindow extends JFrame {
             this.setSize(sourceSize);
         }
 
-        char[] captionArray = new char[User32.INSTANCE.GetWindowTextLength(sourceHandle)];
+        char[] captionArray = new char[User32.INSTANCE.GetWindowTextLength(sourceHandle) + 1];
         int captionLength = User32.INSTANCE.GetWindowText(sourceHandle, captionArray, captionArray.length);
         String caption = new String(captionArray, 0, captionLength);
         this.setTitle(caption + " [cloned]");
 
         HDC outputHDC = User32.INSTANCE.GetWindowDC(outputHandle);
         User32.INSTANCE.PrintWindow(sourceHandle, outputHDC, 0);
+
+//        HDC sourceHDC = User32.INSTANCE.GetDC(sourceHandle);
+//        WINDOWINFO wi = new WinUser.WINDOWINFO();
+//        User32.INSTANCE.GetWindowInfo(sourceHandle, wi);
+//
+//        GDI32.INSTANCE.BitBlt(outputHDC, 0, 0, sourceSize.width, sourceSize.height,
+//                sourceHDC, 0, 0, Constants.SRCCOPY);
+//
+//        User32.INSTANCE.ReleaseDC(sourceHandle, sourceHDC);
+
         User32.INSTANCE.ReleaseDC(outputHandle, outputHDC);
     }
 

@@ -14,6 +14,7 @@ import com.sun.jna.platform.win32.WinDef.HWND;
 import com.sun.jna.platform.win32.WinDef.POINT;
 import com.sun.jna.platform.win32.WinDef.RECT;
 import com.sun.jna.platform.win32.WinGDI.ICONINFO;
+import com.sun.jna.ptr.IntByReference;
 import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Point;
@@ -29,6 +30,7 @@ import javax.swing.JFrame;
 import javax.swing.Timer;
 import pl.umk.mat.faramir.clonewindow.win32.Constants;
 import pl.umk.mat.faramir.clonewindow.win32.GDI32;
+import pl.umk.mat.faramir.clonewindow.win32.Shcore;
 import pl.umk.mat.faramir.clonewindow.win32.Structures.CURSORINFO;
 import pl.umk.mat.faramir.clonewindow.win32.User32;
 
@@ -39,14 +41,20 @@ import pl.umk.mat.faramir.clonewindow.win32.User32;
 final public class ClonedWindow extends JFrame {
 
     private final HWND sourceHandle;
+    private final boolean shouldScale;
     private Point initialPoint;
     private Timer refreshTimer;
     private HWND outputHandle;
     private boolean isMinimized;
-    private Dimension size;
+    private Dimension oldSourceSize;
+    private Dimension scaledSize;
 
-    public ClonedWindow(HWND sourceHandle, int refreshTime) {
-        this.sourceHandle = sourceHandle;
+    public ClonedWindow(WindowHandleItem source, int refreshTime) {
+        IntByReference awereness = new IntByReference(-1);
+        Shcore.INSTANCE.GetProcessDpiAwareness(null, awereness);
+        shouldScale = awereness.getValue() == Shcore.PROCESS_PER_MONITOR_DPI_AWARE;
+
+        this.sourceHandle = source.hWnd();
         refreshTimer = new Timer(refreshTime, evt -> {
             boolean isCurrentlyMinimized = User32.INSTANCE.IsIconic(sourceHandle);
 
@@ -97,16 +105,23 @@ final public class ClonedWindow extends JFrame {
                 refreshTimer.stop();
                 dispose();
             }
+
+            @Override
+            public void windowDeiconified(WindowEvent e) {
+                toFront();
+                setAlwaysOnTop(true);
+                setAlwaysOnTop(false);
+            }
         });
 
         addComponentListener(new ComponentAdapter() {
             @Override
             public void componentResized(ComponentEvent e) {
-                if (!getSize().equals(size)) {
-                    setPreferredSize(size);
-                    setMinimumSize(size);
-                    setMaximumSize(size);
-                    setSize(size);
+                if (!getSize().equals(scaledSize)) {
+                    setPreferredSize(scaledSize);
+                    setMinimumSize(scaledSize);
+                    setMaximumSize(scaledSize);
+                    setSize(scaledSize);
                     revalidate();
                 }
             }
@@ -122,14 +137,24 @@ final public class ClonedWindow extends JFrame {
             return;
         }
 
+        /* calculate scale */
+        int outputDpi = User32.INSTANCE.GetDpiForWindow(outputHandle);
+        int sourceDpi = User32.INSTANCE.GetDpiForWindow(sourceHandle);
+        double scale = (double) sourceDpi / outputDpi;
+
         /* calculate dimension and if necessary change output window size */
         Dimension sourceSize = new Dimension(rect.right - rect.left, rect.bottom - rect.top);
-        if (!size.equals(sourceSize)) {
-            size = sourceSize;
-            setPreferredSize(size);
-            setMinimumSize(size);
-            setMaximumSize(size);
-            setSize(size);
+        if (!oldSourceSize.equals(sourceSize)) {
+            oldSourceSize = sourceSize;
+            if (!shouldScale) {
+                scaledSize = sourceSize;
+            } else {
+                scaledSize = new Dimension((int) (sourceSize.width / scale), (int) (sourceSize.height / scale));
+            }
+            setPreferredSize(scaledSize);
+            setMinimumSize(scaledSize);
+            setMaximumSize(scaledSize);
+            setSize(scaledSize);
             revalidate();
         }
 
@@ -145,14 +170,9 @@ final public class ClonedWindow extends JFrame {
         /* get full window (not only "client"; with titlebar) DC - for painting */
         HDC outputHDC = User32.INSTANCE.GetWindowDC(outputHandle);
 
-        /* calculate scale */
-        int outputDpi = User32.INSTANCE.GetDpiForWindow(outputHandle);
-        int sourceDpi = User32.INSTANCE.GetDpiForWindow(sourceHandle);
-        double scale = (double) sourceDpi / outputDpi;
-
         /* create temporary DC */
         HDC memDC = GDI32.INSTANCE.CreateCompatibleDC(outputHDC);
-        HBITMAP memBM = GDI32.INSTANCE.CreateCompatibleBitmap(outputHDC, (int) (size.width * scale), (int) (size.height * scale));
+        HBITMAP memBM = GDI32.INSTANCE.CreateCompatibleBitmap(outputHDC, (int) (oldSourceSize.width * scale), (int) (oldSourceSize.height * scale));
         GDI32.INSTANCE.SelectObject(memDC, memBM);
 
         /* copy from source window to temporary DC with GPU rendered*/
@@ -161,8 +181,8 @@ final public class ClonedWindow extends JFrame {
         /* copy from temporary DC to output DC */
         GDI32.INSTANCE.SetStretchBltMode(outputHDC, Constants.HALFTONE);
         GDI32.INSTANCE.SetBrushOrgEx(outputHDC, 0, 0, null);
-        GDI32.INSTANCE.StretchBlt(outputHDC, 0, 0, size.width, size.height,
-                memDC, 0, 0, (int) (size.width * scale), (int) (size.height * scale),
+        GDI32.INSTANCE.StretchBlt(outputHDC, 0, 0, oldSourceSize.width, oldSourceSize.height,
+                memDC, 0, 0, (int) (oldSourceSize.width * scale), (int) (oldSourceSize.height * scale),
                 Constants.SRCCOPY);
 
         GDI32.INSTANCE.DeleteObject(memBM);
@@ -204,7 +224,8 @@ final public class ClonedWindow extends JFrame {
         setState(isMinimized ? ICONIFIED : NORMAL);
 
         /* dummy value for size - not to have NullPointerException */
-        size = new Dimension(0, 0);
+        oldSourceSize = new Dimension(0, 0);
+        scaledSize = new Dimension(0, 0);
 
         /* show window to get handle */
         refreshTimer.start();

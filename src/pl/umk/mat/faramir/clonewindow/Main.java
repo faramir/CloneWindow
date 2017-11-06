@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.List;
 import javax.swing.ImageIcon;
 import javax.swing.event.ChangeEvent;
+import pl.umk.mat.faramir.clonewindow.win32.Shcore;
 
 /**
  *
@@ -152,9 +153,8 @@ public class Main extends javax.swing.JFrame {
 
     private void cloneWindowButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cloneWindowButtonActionPerformed
         WindowHandleItem windowHandle = (WindowHandleItem) windowCaptionComboBox.getSelectedItem();
-        HWND sourcePointer = windowHandle.hWnd();
 
-        ClonedWindow clonedFrame = new ClonedWindow(sourcePointer, refreshTimeSlider.getValue());
+        ClonedWindow clonedFrame = new ClonedWindow(windowHandle, refreshTimeSlider.getValue());
         clonedFrame.addWindowListener(new WindowAdapter() {
             @Override
             public void windowClosed(WindowEvent e) {

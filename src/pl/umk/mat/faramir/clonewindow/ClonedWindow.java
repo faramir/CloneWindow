@@ -8,16 +8,17 @@
 package pl.umk.mat.faramir.clonewindow;
 
 import com.sun.jna.Native;
+import com.sun.jna.platform.win32.WinDef.HBITMAP;
 import com.sun.jna.platform.win32.WinDef.HDC;
 import com.sun.jna.platform.win32.WinDef.HWND;
 import com.sun.jna.platform.win32.WinDef.POINT;
 import com.sun.jna.platform.win32.WinDef.RECT;
 import com.sun.jna.platform.win32.WinGDI.ICONINFO;
-import com.sun.jna.platform.win32.WinUser;
-import com.sun.jna.platform.win32.WinUser.WINDOWINFO;
 import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Point;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionAdapter;
@@ -97,6 +98,19 @@ final public class ClonedWindow extends JFrame {
                 dispose();
             }
         });
+
+        addComponentListener(new ComponentAdapter() {
+            @Override
+            public void componentResized(ComponentEvent e) {
+                if (!getSize().equals(size)) {
+                    setPreferredSize(size);
+                    setMinimumSize(size);
+                    setMaximumSize(size);
+                    setSize(size);
+                    revalidate();
+                }
+            }
+        });
     }
 
     @Override
@@ -112,13 +126,12 @@ final public class ClonedWindow extends JFrame {
         Dimension sourceSize = new Dimension(rect.right - rect.left, rect.bottom - rect.top);
         if (!size.equals(sourceSize)) {
             size = sourceSize;
-            setPreferredSize(sourceSize);
-            setMinimumSize(sourceSize);
-            setMaximumSize(sourceSize);
-            setSize(sourceSize);
+            setPreferredSize(size);
+            setMinimumSize(size);
+            setMaximumSize(size);
+            setSize(size);
             revalidate();
         }
-
 
         /* get title of source window */
         char[] captionArray = new char[User32.INSTANCE.GetWindowTextLength(sourceHandle) + 1];
@@ -126,50 +139,59 @@ final public class ClonedWindow extends JFrame {
         String caption = new String(captionArray, 0, captionLength);
         setTitle(caption + " [cloned]");
 
+        /**
+         * * copy window content **
+         */
         /* get full window (not only "client"; with titlebar) DC - for painting */
         HDC outputHDC = User32.INSTANCE.GetWindowDC(outputHandle);
-        try {
-            /* copy from source window to output DC with GPU rendered*/
-            User32.INSTANCE.PrintWindow(sourceHandle, outputHDC, Constants.PW_RENDERFULLCONTENT);
 
-//            int outputDpi = User32.INSTANCE.GetDpiForWindow(outputHandle);
-//            int sourceDpi = User32.INSTANCE.GetDpiForWindow(sourceHandle);
-//            double scale = (double) sourceDpi / outputDpi;
-//            GDI32.INSTANCE.SetStretchBltMode(outputHDC, Constants.HALFTONE);
-//
-//            HDC sourceHDC = User32.INSTANCE.GetWindowDC(sourceHandle);
-//            GDI32.INSTANCE.StretchBlt(outputHDC, 0, 0, size.width, size.height,
-//                    sourceHDC, 0, 0,
-//                    (int)(size.width*scale),
-//                    (int)(size.height*scale),
-//                    Constants.SRCCOPY);
-//            User32.INSTANCE.ReleaseDC(sourceHandle, sourceHDC);
+        /* calculate scale */
+        int outputDpi = User32.INSTANCE.GetDpiForWindow(outputHandle);
+        int sourceDpi = User32.INSTANCE.GetDpiForWindow(sourceHandle);
+        double scale = (double) sourceDpi / outputDpi;
 
-            /* draw also cursor */
-            CURSORINFO cursorInfo = new CURSORINFO();
-            cursorInfo.cbSize = cursorInfo.size();
-            User32.INSTANCE.GetCursorInfo(cursorInfo);
+        /* create temporary DC */
+        HDC memDC = GDI32.INSTANCE.CreateCompatibleDC(outputHDC);
+        HBITMAP memBM = GDI32.INSTANCE.CreateCompatibleBitmap(outputHDC, (int) (size.width * scale), (int) (size.height * scale));
+        GDI32.INSTANCE.SelectObject(memDC, memBM);
 
-            /* only if it is showing */
-            if ((cursorInfo.flags & Constants.CURSOR_SHOWING) != 0) {
-                HWND mouseWindow = User32.INSTANCE.WindowFromPoint(
-                        new POINT.ByValue(cursorInfo.ptScreenPos.getPointer()));
+        /* copy from source window to temporary DC with GPU rendered*/
+        User32.INSTANCE.PrintWindow(sourceHandle, memDC, Constants.PW_RENDERFULLCONTENT);
 
-                /* and if cursor is above visible part of cloned window */
-                if (sourceHandle.equals(mouseWindow)) {
-                    ICONINFO iconInfo = new ICONINFO();
-                    User32.INSTANCE.GetIconInfo(cursorInfo.hCursor, iconInfo);
+        /* copy from temporary DC to output DC */
+        GDI32.INSTANCE.SetStretchBltMode(outputHDC, Constants.HALFTONE);
+        GDI32.INSTANCE.SetBrushOrgEx(outputHDC, 0, 0, null);
+        GDI32.INSTANCE.StretchBlt(outputHDC, 0, 0, size.width, size.height,
+                memDC, 0, 0, (int) (size.width * scale), (int) (size.height * scale),
+                Constants.SRCCOPY);
 
-                    User32.INSTANCE.DrawIcon(
-                            outputHDC,
-                            cursorInfo.ptScreenPos.x - rect.left - iconInfo.xHotspot,
-                            cursorInfo.ptScreenPos.y - rect.top - iconInfo.yHotspot,
-                            cursorInfo.hCursor);
-                }
+        GDI32.INSTANCE.DeleteObject(memBM);
+        GDI32.INSTANCE.DeleteObject(memDC);
+
+        /* draw also cursor */
+        CURSORINFO cursorInfo = new CURSORINFO();
+        cursorInfo.cbSize = cursorInfo.size();
+        User32.INSTANCE.GetCursorInfo(cursorInfo);
+
+        /* only if it is showing */
+        if ((cursorInfo.flags & Constants.CURSOR_SHOWING) != 0) {
+            HWND mouseWindow = User32.INSTANCE.WindowFromPoint(
+                    new POINT.ByValue(cursorInfo.ptScreenPos.getPointer()));
+
+            /* and if cursor is above visible part of cloned window */
+            if (sourceHandle.equals(mouseWindow)) {
+                ICONINFO iconInfo = new ICONINFO();
+                User32.INSTANCE.GetIconInfo(cursorInfo.hCursor, iconInfo);
+
+                User32.INSTANCE.DrawIcon(
+                        outputHDC,
+                        cursorInfo.ptScreenPos.x - rect.left - iconInfo.xHotspot,
+                        cursorInfo.ptScreenPos.y - rect.top - iconInfo.yHotspot,
+                        cursorInfo.hCursor);
             }
-        } finally {
-            User32.INSTANCE.ReleaseDC(outputHandle, outputHDC);
         }
+
+        User32.INSTANCE.ReleaseDC(outputHandle, outputHDC);
     }
 
     void cloneWindow() {

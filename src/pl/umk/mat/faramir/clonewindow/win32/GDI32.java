@@ -9,6 +9,7 @@ package pl.umk.mat.faramir.clonewindow.win32;
 
 import com.sun.jna.Native;
 import com.sun.jna.platform.win32.WinDef.HDC;
+import com.sun.jna.platform.win32.WinDef.POINT;
 import com.sun.jna.win32.W32APIOptions;
 
 /**
@@ -23,4 +24,5 @@ public interface GDI32 extends com.sun.jna.platform.win32.GDI32 {
 
     int SetStretchBltMode(HDC hdc, int iStretchMode);
 
+    boolean SetBrushOrgEx(HDC hdc, int nXOrg, int nYOrg, POINT lppt);
 }

@@ -13,6 +13,8 @@ import com.sun.jna.platform.win32.WinDef.HWND;
 import com.sun.jna.platform.win32.WinDef.POINT;
 import com.sun.jna.platform.win32.WinDef.RECT;
 import com.sun.jna.platform.win32.WinGDI.ICONINFO;
+import com.sun.jna.platform.win32.WinUser;
+import com.sun.jna.platform.win32.WinUser.WINDOWINFO;
 import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Point;
@@ -25,6 +27,7 @@ import javax.swing.ImageIcon;
 import javax.swing.JFrame;
 import javax.swing.Timer;
 import pl.umk.mat.faramir.clonewindow.win32.Constants;
+import pl.umk.mat.faramir.clonewindow.win32.GDI32;
 import pl.umk.mat.faramir.clonewindow.win32.Structures.CURSORINFO;
 import pl.umk.mat.faramir.clonewindow.win32.User32;
 
@@ -128,6 +131,19 @@ final public class ClonedWindow extends JFrame {
         try {
             /* copy from source window to output DC with GPU rendered*/
             User32.INSTANCE.PrintWindow(sourceHandle, outputHDC, Constants.PW_RENDERFULLCONTENT);
+
+//            int outputDpi = User32.INSTANCE.GetDpiForWindow(outputHandle);
+//            int sourceDpi = User32.INSTANCE.GetDpiForWindow(sourceHandle);
+//            double scale = (double) sourceDpi / outputDpi;
+//            GDI32.INSTANCE.SetStretchBltMode(outputHDC, Constants.HALFTONE);
+//
+//            HDC sourceHDC = User32.INSTANCE.GetWindowDC(sourceHandle);
+//            GDI32.INSTANCE.StretchBlt(outputHDC, 0, 0, size.width, size.height,
+//                    sourceHDC, 0, 0,
+//                    (int)(size.width*scale),
+//                    (int)(size.height*scale),
+//                    Constants.SRCCOPY);
+//            User32.INSTANCE.ReleaseDC(sourceHandle, sourceHDC);
 
             /* draw also cursor */
             CURSORINFO cursorInfo = new CURSORINFO();

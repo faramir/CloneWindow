@@ -34,4 +34,9 @@ public interface Constants extends com.sun.jna.platform.win32.WinUser {
     final int CAPTUREBLT = 0x40000000;
     final int CURSOR_SHOWING = 0x00000001;
 
+    final int BLACKONWHITE = 0x00000001;
+    final int WHITEONBLACK = 0x00000002;
+    final int COLORONCOLOR = 0x00000003;
+    final int HALFTONE = 0x00000004;
+    final int MAXSTRETCHBLTMODE = 0x00000004;
 }

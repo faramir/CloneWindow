@@ -23,6 +23,8 @@ public interface User32 extends com.sun.jna.platform.win32.User32 {
 
     boolean IsIconic(HWND hWnd);
 
+    int GetDpiForWindow(HWND hWnd);
+
     HCURSOR GetCursor();
 
     boolean GetCursorInfo(CURSORINFO pci);

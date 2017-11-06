@@ -88,9 +88,6 @@
     <Component class="javax.swing.JComboBox" name="windowCaptionComboBox">
       <Properties>
         <Property name="name" type="java.lang.String" value="" noResource="true"/>
-        <Property name="nextFocusableComponent" type="java.awt.Component" editor="org.netbeans.modules.form.ComponentChooserEditor">
-          <ComponentRef name="default"/>
-        </Property>
       </Properties>
       <Events>
         <EventHandler event="popupMenuWillBecomeVisible" listener="javax.swing.event.PopupMenuListener" parameters="javax.swing.event.PopupMenuEvent" handler="windowCaptionComboBoxPopupMenuWillBecomeVisible"/>
@@ -115,9 +112,6 @@
         <Property name="paintLabels" type="boolean" value="true"/>
         <Property name="paintTicks" type="boolean" value="true"/>
         <Property name="snapToTicks" type="boolean" value="true"/>
-        <Property name="nextFocusableComponent" type="java.awt.Component" editor="org.netbeans.modules.form.ComponentChooserEditor">
-          <ComponentRef name="cloneWindowButton"/>
-        </Property>
       </Properties>
       <Events>
         <EventHandler event="stateChanged" listener="javax.swing.event.ChangeListener" parameters="javax.swing.event.ChangeEvent" handler="refreshTimeSliderStateChanged"/>

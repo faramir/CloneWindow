@@ -16,7 +16,6 @@ import com.sun.jna.platform.win32.WinDef.HWND;
 import com.sun.jna.platform.win32.WinNT;
 import com.sun.jna.platform.win32.WinNT.HANDLE;
 import com.sun.jna.ptr.IntByReference;
-import java.awt.Cursor;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.util.ArrayList;
@@ -87,7 +86,6 @@ public class Main extends javax.swing.JFrame {
         refreshTimeSlider.setPaintLabels(true);
         refreshTimeSlider.setPaintTicks(true);
         refreshTimeSlider.setSnapToTicks(true);
-        refreshTimeSlider.setNextFocusableComponent(cloneWindowButton);
         refreshTimeSlider.addChangeListener(new javax.swing.event.ChangeListener() {
             public void stateChanged(javax.swing.event.ChangeEvent evt) {
                 refreshTimeSliderStateChanged(evt);

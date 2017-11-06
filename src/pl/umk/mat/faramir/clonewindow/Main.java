@@ -11,7 +11,16 @@ import pl.umk.mat.faramir.clonewindow.win32.User32;
 import pl.umk.mat.faramir.clonewindow.win32.Constants;
 import com.sun.jna.Native;
 import com.sun.jna.Pointer;
+import com.sun.jna.platform.win32.Kernel32;
 import com.sun.jna.platform.win32.WinDef.HWND;
+import com.sun.jna.platform.win32.WinNT;
+import com.sun.jna.platform.win32.WinNT.HANDLE;
+import com.sun.jna.ptr.IntByReference;
+import java.awt.Cursor;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
+import java.util.ArrayList;
+import java.util.List;
 import javax.swing.ImageIcon;
 import javax.swing.event.ChangeEvent;
 
@@ -21,6 +30,8 @@ import javax.swing.event.ChangeEvent;
  */
 public class Main extends javax.swing.JFrame {
 
+    private final List<HWND> clonedWindowHandles = new ArrayList<>();
+
     /**
      * Creates new form CloneWindow
      */
@@ -28,7 +39,7 @@ public class Main extends javax.swing.JFrame {
         initComponents();
 
         refreshTimeSliderStateChanged(new ChangeEvent(refreshTimeSlider));
-        refreshButtonActionPerformed(null);
+        windowCaptionComboBoxPopupMenuWillBecomeVisible(null);
     }
 
     /**
@@ -42,7 +53,6 @@ public class Main extends javax.swing.JFrame {
 
         windowCaptionLabel = new javax.swing.JLabel();
         windowCaptionComboBox = new javax.swing.JComboBox<>();
-        refreshButton = new javax.swing.JToggleButton();
         refreshTimeLabel = new javax.swing.JLabel();
         refreshTimeSlider = new javax.swing.JSlider();
         refreshTimeValueLabel = new javax.swing.JLabel();
@@ -58,13 +68,13 @@ public class Main extends javax.swing.JFrame {
         windowCaptionLabel.setText("Window caption:");
 
         windowCaptionComboBox.setName(""); // NOI18N
-        windowCaptionComboBox.setNextFocusableComponent(refreshButton);
-
-        refreshButton.setText("Refresh");
-        refreshButton.setNextFocusableComponent(refreshTimeSlider);
-        refreshButton.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                refreshButtonActionPerformed(evt);
+        windowCaptionComboBox.addPopupMenuListener(new javax.swing.event.PopupMenuListener() {
+            public void popupMenuCanceled(javax.swing.event.PopupMenuEvent evt) {
+            }
+            public void popupMenuWillBecomeInvisible(javax.swing.event.PopupMenuEvent evt) {
+            }
+            public void popupMenuWillBecomeVisible(javax.swing.event.PopupMenuEvent evt) {
+                windowCaptionComboBoxPopupMenuWillBecomeVisible(evt);
             }
         });
 
@@ -109,11 +119,8 @@ public class Main extends javax.swing.JFrame {
                             .addComponent(refreshTimeLabel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addGroup(layout.createSequentialGroup()
-                                .addComponent(windowCaptionComboBox, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(refreshButton))
-                            .addComponent(refreshTimeSlider, javax.swing.GroupLayout.DEFAULT_SIZE, 372, Short.MAX_VALUE)))
+                            .addComponent(refreshTimeSlider, javax.swing.GroupLayout.DEFAULT_SIZE, 372, Short.MAX_VALUE)
+                            .addComponent(windowCaptionComboBox, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)))
                     .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
                         .addGap(0, 0, Short.MAX_VALUE)
                         .addComponent(cloneWindowButton)))
@@ -125,8 +132,7 @@ public class Main extends javax.swing.JFrame {
                 .addContainerGap()
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(windowCaptionComboBox, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(windowCaptionLabel)
-                    .addComponent(refreshButton))
+                    .addComponent(windowCaptionLabel))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addComponent(refreshTimeLabel)
@@ -135,7 +141,7 @@ public class Main extends javax.swing.JFrame {
                         .addComponent(refreshTimeValueLabel)))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(cloneWindowButton)
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                .addContainerGap(14, Short.MAX_VALUE))
         );
 
         pack();
@@ -151,39 +157,62 @@ public class Main extends javax.swing.JFrame {
         HWND sourcePointer = windowHandle.hWnd();
 
         ClonedWindow clonedFrame = new ClonedWindow(sourcePointer, refreshTimeSlider.getValue());
+        clonedFrame.addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosed(WindowEvent e) {
+                clonedWindowHandles.remove(clonedFrame.getOutputHandle());
+            }
+        });
         clonedFrame.cloneWindow();
+        clonedWindowHandles.add(clonedFrame.getOutputHandle());
     }//GEN-LAST:event_cloneWindowButtonActionPerformed
 
-    private void refreshButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_refreshButtonActionPerformed
-        windowCaptionComboBox.removeAllItems();
+    private void windowCaptionComboBoxPopupMenuWillBecomeVisible(javax.swing.event.PopupMenuEvent evt) {//GEN-FIRST:event_windowCaptionComboBoxPopupMenuWillBecomeVisible
         HWND mainWindow = new HWND(Native.getWindowPointer(this));
 
+        List<WindowHandleItem> comboBoxItems = new ArrayList<>();
         User32.INSTANCE.EnumWindows((hWnd, arg) -> {
-            if (mainWindow.equals(hWnd)) {
+            if (mainWindow.equals(hWnd) || clonedWindowHandles.contains(hWnd)) {
                 return true;
             }
 
             int windowStyle = User32.INSTANCE.GetWindowLong(hWnd, Constants.GWL_STYLE);
 
-            char[] nameArray = new char[255];
-            int nameLength = User32.INSTANCE.GetWindowText(hWnd, nameArray, nameArray.length);
-            String name = new String(nameArray, 0, nameLength);
-            
+            char[] windowNameArray = new char[255];
+            int windowNameLength = User32.INSTANCE.GetWindowText(hWnd, windowNameArray, windowNameArray.length);
+            String windowName = new String(windowNameArray, 0, windowNameLength);
+
             if ((windowStyle & Constants.WS_POPUP) != 0
                     || (windowStyle & Constants.WS_CAPTION) == 0
                     || (windowStyle & Constants.WS_VISIBLE) == 0
-                    || nameLength == 0) {
+                    || windowNameLength == 0) {
                 return true;
             }
 
-            windowCaptionComboBox.addItem(new WindowHandleItem(name, hWnd));
+            IntByReference processId = new IntByReference();
+            User32.INSTANCE.GetWindowThreadProcessId(hWnd, processId);
+            HANDLE processHandle = Kernel32.INSTANCE.OpenProcess(WinNT.PROCESS_QUERY_INFORMATION | WinNT.PROCESS_VM_READ, false, processId.getValue());
+            char[] exeNameArray = new char[1024];
+            IntByReference exeNameLength = new IntByReference(exeNameArray.length);
+            Kernel32.INSTANCE.QueryFullProcessImageName(processHandle, WinNT.PROCESS_NAME_NATIVE, exeNameArray, exeNameLength);
+            String exeName = new String(exeNameArray, 0, exeNameLength.getValue());
+            exeName = exeName.substring(exeName.lastIndexOf("\\") + 1);
+
+            WindowHandleItem windowHandle = new WindowHandleItem(hWnd, windowName, processId.getValue(), exeName);
+            comboBoxItems.add(windowHandle);
             return true;
         }, Pointer.NULL);
-    }//GEN-LAST:event_refreshButtonActionPerformed
 
-    /**
-     * @param args the command line arguments
-     */
+        WindowHandleItem selectedItem = (WindowHandleItem) windowCaptionComboBox.getSelectedItem();
+        windowCaptionComboBox.removeAllItems();
+        comboBoxItems.stream().sorted().forEach(windowCaptionComboBox::addItem);
+        if (selectedItem == null) {
+            windowCaptionComboBox.setSelectedIndex(0);
+        } else {
+            windowCaptionComboBox.setSelectedItem(selectedItem);
+        }
+    }//GEN-LAST:event_windowCaptionComboBoxPopupMenuWillBecomeVisible
+
     public static void main(String args[]) {
         //<editor-fold defaultstate="collapsed" desc=" Look and feel setting code (optional) ">
         try {
@@ -205,7 +234,6 @@ public class Main extends javax.swing.JFrame {
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton cloneWindowButton;
-    private javax.swing.JToggleButton refreshButton;
     private javax.swing.JLabel refreshTimeLabel;
     private javax.swing.JSlider refreshTimeSlider;
     private javax.swing.JLabel refreshTimeValueLabel;

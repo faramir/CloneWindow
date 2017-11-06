@@ -8,7 +8,6 @@
 package pl.umk.mat.faramir.clonewindow;
 
 import com.sun.jna.Native;
-import com.sun.jna.platform.win32.WinDef;
 import com.sun.jna.platform.win32.WinDef.HDC;
 import com.sun.jna.platform.win32.WinDef.HWND;
 import com.sun.jna.platform.win32.WinDef.POINT;
@@ -39,10 +38,21 @@ final public class ClonedWindow extends JFrame {
     private Point initialPoint;
     private Timer refreshTimer;
     private HWND outputHandle;
+    private boolean isMinimized;
+    private Dimension size;
 
     public ClonedWindow(HWND sourceHandle, int refreshTime) {
         this.sourceHandle = sourceHandle;
-        refreshTimer = new Timer(refreshTime, evt -> ClonedWindow.this.repaint());
+        refreshTimer = new Timer(refreshTime, evt -> {
+            boolean isCurrentlyMinimized = User32.INSTANCE.IsIconic(sourceHandle);
+
+            if (isCurrentlyMinimized != isMinimized) {
+                isMinimized = isCurrentlyMinimized;
+                setState(isMinimized ? ICONIFIED : NORMAL);
+            }
+
+            ClonedWindow.this.repaint();
+        });
         refreshTimer.setInitialDelay(0);
 
         setIconImage(new ImageIcon(getClass().getResource("/icon.png")).getImage());
@@ -90,15 +100,15 @@ final public class ClonedWindow extends JFrame {
     public void paint(Graphics g) {
         /* get source window size */
         RECT rect = new RECT();
-        User32.INSTANCE.GetWindowRect(sourceHandle, rect);
-        if (rect.right - rect.left == 0) {
+        if (!User32.INSTANCE.GetWindowRect(sourceHandle, rect)) {
             dispose();
             return;
         }
 
         /* calculate dimension and if necessary change output window size */
         Dimension sourceSize = new Dimension(rect.right - rect.left, rect.bottom - rect.top);
-        if (!getSize().equals(sourceSize)) {
+        if (!size.equals(sourceSize)) {
+            size = sourceSize;
             setPreferredSize(sourceSize);
             setMinimumSize(sourceSize);
             setMaximumSize(sourceSize);
@@ -124,9 +134,12 @@ final public class ClonedWindow extends JFrame {
             cursorInfo.cbSize = cursorInfo.size();
             User32.INSTANCE.GetCursorInfo(cursorInfo);
 
+            /* only if it is showing */
             if ((cursorInfo.flags & Constants.CURSOR_SHOWING) != 0) {
                 HWND mouseWindow = User32.INSTANCE.WindowFromPoint(
                         new POINT.ByValue(cursorInfo.ptScreenPos.getPointer()));
+
+                /* and if cursor is above visible part of cloned window */
                 if (sourceHandle.equals(mouseWindow)) {
                     ICONINFO iconInfo = new ICONINFO();
                     User32.INSTANCE.GetIconInfo(cursorInfo.hCursor, iconInfo);
@@ -144,18 +157,30 @@ final public class ClonedWindow extends JFrame {
     }
 
     void cloneWindow() {
+        /* check source style (is resizeable) and set it for output window */
+        int sourceWindowStyle = User32.INSTANCE.GetWindowLong(sourceHandle, Constants.GWL_STYLE);
+        setResizable((sourceWindowStyle & Constants.WS_SIZEBOX) != 0);
+
+        /* set minimized state of the clone */
+        isMinimized = (sourceWindowStyle & Constants.WS_ICONIC) != 0;
+        setState(isMinimized ? ICONIFIED : NORMAL);
+
+        /* dummy value for size - not to have NullPointerException */
+        size = new Dimension(0, 0);
+
+        /* show window to get handle */
         refreshTimer.start();
         setVisible(true);
 
         /* get handle of this window */
         outputHandle = new HWND(Native.getWindowPointer(this));
 
-        /* check source style (is resizeable) and set it for output window */
-        int sourceWindowStyle = User32.INSTANCE.GetWindowLong(sourceHandle, Constants.GWL_STYLE);
-        setResizable((sourceWindowStyle & Constants.WS_SIZEBOX) != 0);
-
         /* disable output window maximize button on titlebar */
         int outputWindowStyle = User32.INSTANCE.GetWindowLong(outputHandle, Constants.GWL_STYLE);
         User32.INSTANCE.SetWindowLong(outputHandle, Constants.GWL_STYLE, outputWindowStyle & ~Constants.WS_MAXIMIZEBOX);
+    }
+
+    public HWND getOutputHandle() {
+        return outputHandle;
     }
 }

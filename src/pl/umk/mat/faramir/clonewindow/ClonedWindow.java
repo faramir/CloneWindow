@@ -45,7 +45,6 @@ import pl.umk.mat.faramir.clonewindow.win32.User32;
  */
 final public class ClonedWindow extends JFrame {
 
-//    private static final HBRUSH NULL_HBRUSH = new HBRUSH(Pointer.NULL);
     private final int dpiAwareness;
     private final Dimension mousePointerSystemSize;
     private final HWND sourceHandle;

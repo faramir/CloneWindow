@@ -131,7 +131,6 @@ final public class ClonedWindow extends JFrame {
             @Override
             public void componentResized(ComponentEvent e) {
                 if (!getSize().equals(outputWindowSize)) {
-
                     setPreferredSize(outputWindowSize);
                     setMinimumSize(outputWindowSize);
                     setMaximumSize(outputWindowSize);
@@ -272,6 +271,7 @@ final public class ClonedWindow extends JFrame {
         setState(isMinimized ? ICONIFIED : NORMAL);
 
         /* dummy value for size - not to have NullPointerException */
+        outputWindowSize = new Dimension(0, 0);
         previousSourceSize = new Dimension(0, 0);
 
         /* show window to get handle */

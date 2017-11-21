@@ -18,13 +18,12 @@ import com.sun.jna.ptr.IntByReference;
 import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Point;
-import java.awt.event.ComponentAdapter;
-import java.awt.event.ComponentEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionAdapter;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.util.function.Function;
 import javax.swing.ImageIcon;
 import javax.swing.JFrame;
 import javax.swing.Timer;
@@ -41,18 +40,19 @@ import pl.umk.mat.faramir.clonewindow.win32.User32;
 final public class ClonedWindow extends JFrame {
 
     private final HWND sourceHandle;
-    private final boolean shouldScale;
+    private final int dpiAwareness;
     private Point initialPoint;
     private Timer refreshTimer;
     private HWND outputHandle;
     private boolean isMinimized;
     private Dimension oldSourceSize;
-    private Dimension scaledSize;
+    private int oldOutputDpi;
+    private int oldSourceDpi;
 
     public ClonedWindow(WindowHandleItem source, int refreshTime) {
-        IntByReference awereness = new IntByReference(-1);
-        Shcore.INSTANCE.GetProcessDpiAwareness(null, awereness);
-        shouldScale = awereness.getValue() == Shcore.PROCESS_PER_MONITOR_DPI_AWARE;
+        IntByReference awareness = new IntByReference(-1);
+        Shcore.INSTANCE.GetProcessDpiAwareness(null, awareness);
+        dpiAwareness = awareness.getValue();
 
         this.sourceHandle = source.hWnd();
         refreshTimer = new Timer(refreshTime, evt -> {
@@ -114,18 +114,18 @@ final public class ClonedWindow extends JFrame {
             }
         });
 
-        addComponentListener(new ComponentAdapter() {
-            @Override
-            public void componentResized(ComponentEvent e) {
-                if (!getSize().equals(scaledSize)) {
-                    setPreferredSize(scaledSize);
-                    setMinimumSize(scaledSize);
-                    setMaximumSize(scaledSize);
-                    setSize(scaledSize);
-                    revalidate();
-                }
-            }
-        });
+//        addComponentListener(new ComponentAdapter() {
+//            @Override
+//            public void componentResized(ComponentEvent e) {
+//                if (!getSize().equals(scaledSize)) {
+//                    setPreferredSize(scaledSize);
+//                    setMinimumSize(scaledSize);
+//                    setMaximumSize(scaledSize);
+//                    setSize(scaledSize);
+//                    revalidate();
+//                }
+//            }
+//        });
     }
 
     @Override
@@ -138,25 +138,52 @@ final public class ClonedWindow extends JFrame {
         }
 
         /* calculate scale */
-        int outputDpi = User32.INSTANCE.GetDpiForWindow(outputHandle);
         int sourceDpi = User32.INSTANCE.GetDpiForWindow(sourceHandle);
-        double scale = (double) sourceDpi / outputDpi;
+        int outputDpi = User32.INSTANCE.GetDpiForWindow(outputHandle);
 
         /* calculate dimension and if necessary change output window size */
+        Function<POINT, POINT> pointTransform;
         Dimension sourceSize = new Dimension(rect.right - rect.left, rect.bottom - rect.top);
-        if (!oldSourceSize.equals(sourceSize)) {
+        Dimension bitmapSize;
+        Dimension outputWindowSize;
+        Dimension outputSize;
+        if (dpiAwareness == Shcore.PROCESS_PER_MONITOR_DPI_AWARE) {
+            double sourceScale = 96.0 / sourceDpi;
+            Dimension scaledSourceSize = new Dimension((int) (sourceSize.width * sourceScale), (int) (sourceSize.height * sourceScale));
+            bitmapSize = sourceSize;
+            outputWindowSize = scaledSourceSize;
+
+            double outputScale = (double) outputDpi / sourceDpi;
+            outputSize = new Dimension((int) (sourceSize.width * outputScale), (int) (sourceSize.height * outputScale));
+            pointTransform = point -> new POINT((int) (point.x * outputScale), (int) (point.y * outputScale));
+        } else {
+            double sourceScale = (double) sourceDpi / outputDpi;
+            Dimension scaledSourceSize = new Dimension((int) (sourceSize.width * sourceScale), (int) (sourceSize.height * sourceScale));
+            bitmapSize = scaledSourceSize;
+            outputWindowSize = sourceSize;
+            outputSize = sourceSize;
+            pointTransform = point -> point;
+        }
+
+        if (!oldSourceSize.equals(sourceSize) || outputDpi != oldOutputDpi || sourceDpi != oldSourceDpi) {
             oldSourceSize = sourceSize;
-            if (!shouldScale) {
-                scaledSize = sourceSize;
-            } else {
-                scaledSize = new Dimension((int) (sourceSize.width / scale), (int) (sourceSize.height / scale));
-            }
-            setPreferredSize(scaledSize);
-            setMinimumSize(scaledSize);
-            setMaximumSize(scaledSize);
-            setSize(scaledSize);
+            oldOutputDpi = outputDpi;
+            oldSourceDpi = sourceDpi;
+
+            setPreferredSize(outputWindowSize);
+            setMinimumSize(outputWindowSize);
+            setMaximumSize(outputWindowSize);
+            setSize(outputWindowSize);
             revalidate();
         }
+
+//        User32.INSTANCE.GetWindowRect(outputHandle, rect);
+//        Dimension outputSize = new Dimension(rect.right - rect.left, rect.bottom - rect.top);
+//
+//        if (time != (long)(System.nanoTime() / 1e9)) {
+//            time = (long) (System.nanoTime() / 1e9);
+//            System.err.println(outputSize+" "+sourceSize+" "+bitmapSize+" "+outputWindowSize+" "+outputSize.equals(bitmapSize) + " " + outputSize.equals(outputWindowSize) + " " + outputSize.equals(sourceSize));
+//        }
 
         /* get title of source window */
         char[] captionArray = new char[User32.INSTANCE.GetWindowTextLength(sourceHandle) + 1];
@@ -168,21 +195,22 @@ final public class ClonedWindow extends JFrame {
          * * copy window content **
          */
         /* get full window (not only "client"; with titlebar) DC - for painting */
-        HDC outputHDC = User32.INSTANCE.GetWindowDC(outputHandle);
+        HDC sourceHDC = User32.INSTANCE.GetWindowDC(sourceHandle);
 
         /* create temporary DC */
-        HDC memDC = GDI32.INSTANCE.CreateCompatibleDC(outputHDC);
-        HBITMAP memBM = GDI32.INSTANCE.CreateCompatibleBitmap(outputHDC, (int) (oldSourceSize.width * scale), (int) (oldSourceSize.height * scale));
+        HDC memDC = GDI32.INSTANCE.CreateCompatibleDC(sourceHDC);
+        HBITMAP memBM = GDI32.INSTANCE.CreateCompatibleBitmap(sourceHDC, bitmapSize.width, bitmapSize.height);
         GDI32.INSTANCE.SelectObject(memDC, memBM);
 
         /* copy from source window to temporary DC with GPU rendered*/
         User32.INSTANCE.PrintWindow(sourceHandle, memDC, Constants.PW_RENDERFULLCONTENT);
 
         /* copy from temporary DC to output DC */
+        HDC outputHDC = User32.INSTANCE.GetWindowDC(outputHandle);
         GDI32.INSTANCE.SetStretchBltMode(outputHDC, Constants.HALFTONE);
         GDI32.INSTANCE.SetBrushOrgEx(outputHDC, 0, 0, null);
-        GDI32.INSTANCE.StretchBlt(outputHDC, 0, 0, oldSourceSize.width, oldSourceSize.height,
-                memDC, 0, 0, (int) (oldSourceSize.width * scale), (int) (oldSourceSize.height * scale),
+        GDI32.INSTANCE.StretchBlt(outputHDC, 0, 0, outputSize.width, outputSize.height,
+                memDC, 0, 0, bitmapSize.width, bitmapSize.height,
                 Constants.SRCCOPY);
 
         GDI32.INSTANCE.DeleteObject(memBM);
@@ -202,17 +230,20 @@ final public class ClonedWindow extends JFrame {
             if (sourceHandle.equals(mouseWindow)) {
                 ICONINFO iconInfo = new ICONINFO();
                 User32.INSTANCE.GetIconInfo(cursorInfo.hCursor, iconInfo);
-
+                POINT mousePoint = pointTransform.apply(
+                        new POINT(cursorInfo.ptScreenPos.x - rect.left - iconInfo.xHotspot,
+                                cursorInfo.ptScreenPos.y - rect.top - iconInfo.yHotspot));
                 User32.INSTANCE.DrawIcon(
                         outputHDC,
-                        cursorInfo.ptScreenPos.x - rect.left - iconInfo.xHotspot,
-                        cursorInfo.ptScreenPos.y - rect.top - iconInfo.yHotspot,
+                        mousePoint.x,
+                        mousePoint.y,
                         cursorInfo.hCursor);
             }
         }
 
         User32.INSTANCE.ReleaseDC(outputHandle, outputHDC);
     }
+    private long time;
 
     void cloneWindow() {
         /* check source style (is resizeable) and set it for output window */
@@ -225,7 +256,6 @@ final public class ClonedWindow extends JFrame {
 
         /* dummy value for size - not to have NullPointerException */
         oldSourceSize = new Dimension(0, 0);
-        scaledSize = new Dimension(0, 0);
 
         /* show window to get handle */
         refreshTimer.start();

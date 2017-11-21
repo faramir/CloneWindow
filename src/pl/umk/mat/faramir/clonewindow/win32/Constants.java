@@ -39,4 +39,11 @@ public interface Constants extends com.sun.jna.platform.win32.WinUser {
     final int COLORONCOLOR = 0x00000003;
     final int HALFTONE = 0x00000004;
     final int MAXSTRETCHBLTMODE = 0x00000004;
+
+    final int DI_COMPAT = 0x0004;
+    final int DI_DEFAULTSIZE = 0x0008;
+    final int DI_IMAGE = 0x0002;
+    final int DI_MASK = 0x0001;
+    final int DI_NOMIRROR = 0x0010;
+    final int DI_NORMAL = 0x0003;
 }

@@ -33,5 +33,7 @@ public interface User32 extends com.sun.jna.platform.win32.User32 {
 
     boolean DrawIcon(HDC hDC, int X, int Y, HICON hIcon);
 
+    boolean DrawIconEx(HDC hdc, int xLeft, int yTop, HICON hIcon, int cxWidth, int cyWidth, int istepIfAniCur, HBRUSH hbrFlickerFreeDraw, int diFlags);
+
     HWND WindowFromPoint(POINT.ByValue point);
 }

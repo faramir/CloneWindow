@@ -51,7 +51,7 @@ final public class ClonedWindow extends JFrame {
     private HWND outputHandle;
     private Point dragInitialPoint;
     private Dimension outputWindowSize;
-    private boolean isMinimized;
+    private boolean isSourceMinimized;
     private Dimension previousSourceSize;
     private int previousOutputDpi;
     private int previousSourceDpi;
@@ -67,16 +67,18 @@ final public class ClonedWindow extends JFrame {
         mousePointerSystemSize = new Dimension(mousePointerWidth, mousePointerHeight);
 
         this.sourceHandle = source.hWnd();
-        refreshExecutor = Executors.newScheduledThreadPool(1);
+        refreshExecutor = Executors.newSingleThreadScheduledExecutor();
         refreshExecutor.scheduleWithFixedDelay(() -> {
-            boolean isCurrentlyMinimized = User32.INSTANCE.IsIconic(sourceHandle);
+            boolean isSourceCurrentlyMinimized = User32.INSTANCE.IsIconic(sourceHandle);
 
-            if (isCurrentlyMinimized != isMinimized) {
-                isMinimized = isCurrentlyMinimized;
-                setState(isMinimized ? ICONIFIED : NORMAL);
+            if (isSourceCurrentlyMinimized != isSourceMinimized) {
+                isSourceMinimized = isSourceCurrentlyMinimized;
+                setState(isSourceMinimized ? ICONIFIED : NORMAL);
             }
 
-            ClonedWindow.this.repaint();
+            if (!isSourceCurrentlyMinimized && getState() != ICONIFIED) {
+                ClonedWindow.this.repaint();
+            }
         }, 0, refreshTime, TimeUnit.MILLISECONDS);
 
         setIconImage(new ImageIcon(getClass().getResource("/icon.png")).getImage());
@@ -123,6 +125,7 @@ final public class ClonedWindow extends JFrame {
                 toFront();
                 setAlwaysOnTop(true);
                 setAlwaysOnTop(false);
+                User32.INSTANCE.BringWindowToTop(sourceHandle);
             }
         });
 
@@ -141,7 +144,7 @@ final public class ClonedWindow extends JFrame {
     }
 
     @Override
-    public void paint(Graphics g) {
+    synchronized public void paint(Graphics g) {
         /* get source window size */
         RECT sourceRect = new RECT();
         if (!User32.INSTANCE.GetWindowRect(sourceHandle, sourceRect)) {
@@ -201,9 +204,6 @@ final public class ClonedWindow extends JFrame {
         String caption = new String(captionArray, 0, captionLength);
         setTitle(caption + " [cloned]");
 
-        /**
-         * * copy window content **
-         */
         /* get full window (not only "client"; with titlebar) DC - for painting */
         HDC sourceHDC = User32.INSTANCE.GetWindowDC(sourceHandle);
 
@@ -260,14 +260,14 @@ final public class ClonedWindow extends JFrame {
         User32.INSTANCE.ReleaseDC(outputHandle, outputHDC);
     }
 
-    void cloneWindow() {
+    public void cloneWindow() {
         /* check source style (is resizeable) and set it for output window */
         int sourceWindowStyle = User32.INSTANCE.GetWindowLong(sourceHandle, Constants.GWL_STYLE);
         setResizable((sourceWindowStyle & Constants.WS_SIZEBOX) != 0);
 
         /* set minimized state of the clone */
-        isMinimized = (sourceWindowStyle & Constants.WS_ICONIC) != 0;
-        setState(isMinimized ? ICONIFIED : NORMAL);
+        isSourceMinimized = (sourceWindowStyle & Constants.WS_ICONIC) != 0;
+        setState(isSourceMinimized ? ICONIFIED : NORMAL);
 
         /* dummy value for size - not to have NullPointerException */
         outputWindowSize = new Dimension(0, 0);
@@ -284,7 +284,7 @@ final public class ClonedWindow extends JFrame {
         User32.INSTANCE.SetWindowLong(outputHandle, Constants.GWL_STYLE, outputWindowStyle & ~Constants.WS_MAXIMIZEBOX);
     }
 
-    public HWND getOutputHandle() {
+    public HWND getOutputWindowHandle() {
         return outputHandle;
     }
 }

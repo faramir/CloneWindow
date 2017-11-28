@@ -158,11 +158,11 @@ public class Main extends javax.swing.JFrame {
         clonedFrame.addWindowListener(new WindowAdapter() {
             @Override
             public void windowClosed(WindowEvent e) {
-                clonedWindowHandles.remove(clonedFrame.getOutputHandle());
+                clonedWindowHandles.remove(clonedFrame.getOutputWindowHandle());
             }
         });
         clonedFrame.cloneWindow();
-        clonedWindowHandles.add(clonedFrame.getOutputHandle());
+        clonedWindowHandles.add(clonedFrame.getOutputWindowHandle());
     }//GEN-LAST:event_cloneWindowButtonActionPerformed
 
     private void windowCaptionComboBoxPopupMenuWillBecomeVisible(javax.swing.event.PopupMenuEvent evt) {//GEN-FIRST:event_windowCaptionComboBoxPopupMenuWillBecomeVisible

@@ -21,6 +21,8 @@ public interface User32 extends com.sun.jna.platform.win32.User32 {
 
     HDC GetWindowDC(HWND hWnd);
 
+    boolean BringWindowToTop(HWND hWnd);
+
     boolean IsIconic(HWND hWnd);
 
     int GetDpiForWindow(HWND hWnd);

@@ -225,6 +225,7 @@ final public class ClonedWindow extends JFrame {
 
         GDI32.INSTANCE.DeleteObject(memBM);
         GDI32.INSTANCE.DeleteObject(memDC);
+        GDI32.INSTANCE.DeleteObject(sourceHDC);
 
         /* draw also cursor */
         CURSORINFO cursorInfo = new CURSORINFO();
@@ -258,6 +259,8 @@ final public class ClonedWindow extends JFrame {
         }
 
         User32.INSTANCE.ReleaseDC(outputHandle, outputHDC);
+        GDI32.INSTANCE.DeleteObject(outputHDC);
+
     }
 
     public void cloneWindow() {
